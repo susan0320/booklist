@@ -1,1 +1,559 @@
-content://com.google.android.apps.search.assistant.surfaces.voice.robin.fileprovider/attachments/book-list.html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>精選推薦書單</title>
+  <style>
+    :root {
+      --bg-color: #faf8f5;
+      --card-bg: #ffffff;
+      --text-main: #2c2c2c;
+      --text-muted: #6e6d6b;
+      --accent: #d97757;
+      --accent-hover: #c26344;
+      --border-color: #eae6df;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+      --shadow-hover: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    /* 頁首區塊 */
+    header {
+      text-align: center;
+      padding: 48px 20px 32px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    /* 搜尋與分類篩選列 */
+    .controls {
+      max-width: 1100px;
+      margin: 0 auto 32px;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .search-box {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      font-size: 0.95rem;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 6px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: #fff;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+
+    /* 書牆網格 */
+    .book-grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 28px;
+    }
+
+    .book-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .book-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .cover-wrapper {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: #f0ede6;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cover-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .book-info {
+      padding: 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .book-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: #fdf3ef;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      align-self: flex-start;
+    }
+
+    .book-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .book-author {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* 彈出詳情視窗 (Modal) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 720px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: #f3f1ed;
+      color: var(--text-main);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: #e5e1d8;
+    }
+
+    .modal-body {
+      display: flex;
+      gap: 28px;
+      padding: 32px;
+    }
+
+    .modal-cover {
+      flex-shrink: 0;
+      width: 210px;
+    }
+
+    .modal-cover img {
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .modal-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-details h2 {
+      font-size: 1.45rem;
+      margin: 6px 0 8px;
+      line-height: 1.35;
+    }
+
+    .modal-meta {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-desc {
+      font-size: 0.95rem;
+      color: #3d3d3d;
+      white-space: pre-line;
+      margin-bottom: 24px;
+      flex: 1;
+    }
+
+    .store-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .store-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: var(--accent);
+      color: #fff;
+      transition: background 0.2s;
+    }
+
+    .store-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .store-btn.secondary {
+      background: #f3f1ed;
+      color: var(--text-main);
+    }
+
+    .store-btn.secondary:hover {
+      background: #e6e2d8;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+    }
+
+    /* 手機版響應式調整 */
+    @media (max-width: 640px) {
+      .book-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      .modal-body {
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 20px;
+      }
+      .modal-cover {
+        width: 160px;
+      }
+      .modal-details h2 {
+        font-size: 1.25rem;
+        text-align: center;
+      }
+      .modal-meta {
+        text-align: center;
+      }
+      .store-links {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📚 精選推薦書單</h1>
+    <p>點擊任一本書的封面，查看詳細內容簡介與網路書店購買連結</p>
+  </header>
+
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜尋書名、作者或關鍵字..." />
+    </div>
+    <div class="filter-tags" id="filterTags"></div>
+  </div>
+
+  <main class="book-grid" id="bookGrid"></main>
+
+  <!-- 書籍詳情彈窗 -->
+  <div class="modal-backdrop" id="bookModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="close-btn" id="closeModal" aria-label="關閉">&times;</button>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. 在這裡編輯你的書單資料（可直接新增或修改）
+    // ==========================================
+    const booksData = [
+      {
+        title: "好餓的毛毛蟲",
+        author: "艾瑞．卡爾 (Eric Carle)",
+        publisher: "上誼文化",
+        category: "經典繪本",
+        cover: "https://placehold.co/300x400/f4a261/ffffff?text=好餓的毛毛蟲",
+        description: "一隻剛孵化的小毛毛蟲，星期一吃了一個蘋果、星期二吃了兩個梨子……隨著一天天過去，毛毛蟲越吃越多，最後結成繭，蛻變成一隻美麗的蝴蝶。\n\n透過洞洞書設計與鮮豔拼貼畫風，帶領孩子認識星期、數字、食物與自然界的蛻變奧秘。",
+        links: [
+          { name: "博客來", url: "https://www.books.com.tw/" },
+          { name: "誠品線上", url: "https://www.eslite.com/" },
+          { name: "信誼小太陽", url: "https://store.kimy.com.tw/" }
+        ]
+      },
+      {
+        title: "小王子",
+        author: "安東尼．聖修伯里",
+        publisher: "聯經出版",
+        category: "文學故事",
+        cover: "https://placehold.co/300x400/2a9d8f/ffffff?text=小王子",
+        description: "飛行員因飛機故障迫降在撒哈拉沙漠，遇見了來自 B612 小行星的小王子。\n\n透過小王子在各個星球上的奇遇，以及與狐狸、玫瑰的對話，溫柔提醒著每一個曾經是孩子的大人：「真正重要的東西，用眼睛是看不見的。」",
+        links: [
+          { name: "博客來", url: "https://www.books.com.tw/" },
+          { name: "誠品線上", url: "https://www.eslite.com/" },
+          { name: "Readmoo 讀墨", url: "https://readmoo.com/" }
+        ]
+      },
+      {
+        title: "神奇樹屋 1：恐龍谷大冒險",
+        author: "瑪麗．波．奧斯本",
+        publisher: "小天下",
+        category: "橋梁書",
+        cover: "https://placehold.co/300x400/e76f51/ffffff?text=神奇樹屋",
+        description: "傑克和安妮兄妹在森林裡發現了一座裝滿書的神奇樹屋，只要指著書裡的圖片許願，樹屋就會帶他們穿越時空！\n\n第一站他們來到了白堊紀的恐龍谷，面對巨大的暴龍與未知的危險，他們該如何平安回家？",
+        links: [
+          { name: "博客來", url: "https://www.books.com.tw/" },
+          { name: "誠品線上", url: "https://www.eslite.com/" }
+        ]
+      },
+      {
+        title: "為什麼？小小百科全書",
+        author: "DK 編輯團隊",
+        publisher: "大石國際文化",
+        category: "知識百科",
+        cover: "https://placehold.co/300x400/457b9d/ffffff?text=小小百科全書",
+        description: "天空為什麼是藍色的？蜜蜂怎麼釀造蜂蜜？地球內部有什麼？\n\n收錄超過 150 個孩子最常問的十萬個為什麼，搭配清晰全彩圖解與簡明易懂的解答，滿足好奇心。",
+        links: [
+          { name: "博客來", url: "https://www.books.com.tw/" },
+          { name: "momo 購物網", url: "https://www.momoshop.com.tw/" }
+        ]
+      }
+    ];
+
+    // ==========================================
+    // 2. 網頁渲染與互動邏輯（無需修改）
+    // ==========================================
+    const bookGrid = document.getElementById("bookGrid");
+    const filterTags = document.getElementById("filterTags");
+    const searchInput = document.getElementById("searchInput");
+    const bookModal = document.getElementById("bookModal");
+    const modalBody = document.getElementById("modalBody");
+    const closeModalBtn = document.getElementById("closeModal");
+
+    let currentCategory = "全部";
+    let searchQuery = "";
+
+    // 產生分類按鈕
+    function renderCategories() {
+      const categories = ["全部", ...new Set(booksData.map(book => book.category))];
+      filterTags.innerHTML = categories.map(cat => `
+        <button class="filter-btn ${cat === currentCategory ? "active" : ""}" data-cat="${cat}">
+          ${cat}
+        </button>
+      `).join("");
+
+      filterTags.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentCategory = btn.dataset.cat;
+          renderCategories();
+          renderBooks();
+        });
+      });
+    }
+
+    // 渲染書籍卡片
+    function renderBooks() {
+      const filtered = booksData.filter(book => {
+        const matchCat = currentCategory === "全部" || book.category === currentCategory;
+        const keyword = searchQuery.toLowerCase();
+        const matchText =
+          book.title.toLowerCase().includes(keyword) ||
+          book.author.toLowerCase().includes(keyword) ||
+          book.description.toLowerCase().includes(keyword);
+        return matchCat && matchText;
+      });
+
+      if (filtered.length === 0) {
+        bookGrid.innerHTML = `<div class="empty-state">找不到符合條件的書籍，試試其他關鍵字吧！</div>`;
+        return;
+      }
+
+      bookGrid.innerHTML = filtered.map((book, index) => `
+        <article class="book-card" data-index="${booksData.indexOf(book)}">
+          <div class="cover-wrapper">
+            <img src="${book.cover}" alt="${book.title}" loading="lazy" />
+          </div>
+          <div class="book-info">
+            <div>
+              <span class="book-tag">${book.category}</span>
+              <h2 class="book-title">${book.title}</h2>
+            </div>
+            <p class="book-author">${book.author}</p>
+          </div>
+        </article>
+      `).join("");
+
+      bookGrid.querySelectorAll(".book-card").forEach(card => {
+        card.addEventListener("click", () => {
+          const book = booksData[card.dataset.index];
+          openModal(book);
+        });
+      });
+    }
+
+    // 開啟詳情彈窗
+    function openModal(book) {
+      const linksHtml = book.links.map((link, idx) => `
+        <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="store-btn ${idx > 0 ? "secondary" : ""}">
+          前往${link.name} ↗
+        </a>
+      `).join("");
+
+      modalBody.innerHTML = `
+        <div class="modal-cover">
+          <img src="${book.cover}" alt="${book.title}" />
+        </div>
+        <div class="modal-details">
+          <span class="book-tag">${book.category}</span>
+          <h2>${book.title}</h2>
+          <div class="modal-meta">作者：${book.author} ｜ 出版社：${book.publisher}</div>
+          <div class="modal-desc">${book.description}</div>
+          <div class="store-links">${linksHtml}</div>
+        </div>
+      `;
+      bookModal.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    // 關閉詳情彈窗
+    function closeModal() {
+      bookModal.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    closeModalBtn.addEventListener("click", closeModal);
+    bookModal.addEventListener("click", (e) => {
+      if (e.target === bookModal) closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && bookModal.classList.contains("open")) closeModal();
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.trim();
+      renderBooks();
+    });
+
+    // 初始化
+    renderCategories();
+    renderBooks();
+  </script>
+</body>
+</html>
